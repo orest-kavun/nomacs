@@ -1,0 +1,127 @@
+name: Windows workflow
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    name: build (windows-msvc)
+
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      # ---- Toolchain ----
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Setup Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v4
+
+      # ---- Qt ----
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.6.2"
+          host: "windows"
+          target: "desktop"
+          arch: "win64_msvc2019_64"
+          modules: qt5compat
+          cache: true
+
+      # ---- VCPKG Dependencies (simplified, no caching) ----
+      - name: Setup and install vcpkg dependencies
+        run: |
+          Write-Host "Installing Qt6 base for vcpkg..."
+          & vcpkg install qt6-base:x64-windows
+
+          Write-Host "Installing OpenCV build-time dependencies..."
+          
+          $dependencies = @(
+            'exiv2:x64-windows',
+            'libraw:x64-windows', 
+            'vulkan-headers:x64-windows'
+          )
+
+          foreach ($dep in $dependencies) {
+            Write-Host "Installing: $($dep)"
+            & vcpkg install --triplet x64-windows $dep
+          }
+
+      - name: Fetch OpenCV source
+        run: |
+          if (-Not (Test-Path "${{ github.workspace }}/opencv")) {
+            Write-Host "Cloning OpenCV..."
+            git clone --depth 1 -b 4.13.0 https://github.com/opencv/opencv.git opencv
+          } else {
+            Write-Host "OpenCV already present, skipping clone"
+          }
+
+      # ---- Build & Install OpenCV (with Ninja) ----
+      - name: Build & Install OpenCV (with Ninja)
+        run: |
+          $opencvSrc = "${{ github.workspace }}/opencv"
+          $opencvBuild = "$opencvSrc/build"
+          $opencvInstall = "$opencvSrc/install"
+
+          cmake -S $opencvSrc -B $opencvBuild `
+            -G Ninja -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_INSTALL_PREFIX="$opencvInstall" `
+            "-DBUILD_LIST=core,imgproc" `
+            -DBUILD_SHARED_LIBS=ON `
+            -DBUILD_TESTS=OFF `
+            -DBUILD_PERF_TESTS=OFF `
+            -DBUILD_EXAMPLES=OFF `
+            -DWITH_JPEG=OFF `
+            -DWITH_PNG=OFF `
+            -DWITH_WEBP=OFF `
+            -DWITH_OPENEXR=OFF `
+            -DWITH_TIFF=ON `
+            -DWITH_FFMPEG=OFF `
+            -DWITH_GSTREAMER=OFF `
+            -DWITH_OPENCL=OFF `
+            -DWITH_IPP=OFF `
+            -DWITH_PROTOBUF=OFF `
+            -DWITH_QT=OFF `
+            -DWITH_OPENGL=OFF
+
+          cmake --build $opencvBuild --parallel 2>&1 | Select-Object -First 50
+          cmake --install $opencvBuild
+
+      # ---- Configure nomacs (simplified, no pkg-config complexity) ----
+      - name: Configure nomacs
+        run: |
+          $opencvInstall = "${{ github.workspace }}/opencv/install"
+
+          cmake -S ImageLounge -B build -G Ninja `
+            "-DCMAKE_BUILD_TYPE=Release" `-
+            "-DCMAKE_PREFIX_PATH=$opencvInstall;$Env{Qt6_DIR}\\..\\\""
+
+      # ---- Build ----
+      - name: Build
+        run: cmake --build build
+
+      # ---- Package ----
+      - name: Prepare package
+        run: |
+          $pkg = "package"
+          New-Item -ItemType Directory -Force $pkg | Out-Null
+
+          Copy-Item build\*.exe $pkg
+
+          windeployqt `
+            --release `
+            --no-system-d3d-compiler `
+            $pkg\*.exe
+

@@ -2,20 +2,20 @@ name: macOS workflow
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - master
-    paths-ignore:
-      - appveyor.yml
-      - .github/workflows/docker.yml
-      - .github/workflows/linux.yml
-  pull_request:
-    branches:
-      - master
-    paths-ignore:
-      - appveyor.yml
-      - .github/workflows/docker.yml
-      - .github/workflows/linux.yml
+  # push:
+  #   branches:
+  #     - master
+  #   paths-ignore:
+  #     - appveyor.yml
+  #     - .github/workflows/docker.yml
+  #     - .github/workflows/linux.yml
+  # pull_request:
+  #   branches:
+  #     - master
+  #   paths-ignore:
+  #     - appveyor.yml
+  #     - .github/workflows/docker.yml
+  #     - .github/workflows/linux.yml
 
 jobs:
   build:

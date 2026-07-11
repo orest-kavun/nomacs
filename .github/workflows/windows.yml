@@ -47,10 +47,10 @@ jobs:
           & vcpkg install qt6-base:x64-windows
 
           Write-Host "Installing OpenCV build-time dependencies..."
-          
+
           $dependencies = @(
             'exiv2:x64-windows',
-            'libraw:x64-windows', 
+            'libraw:x64-windows',
             'vulkan-headers:x64-windows'
           )
 
@@ -61,25 +61,24 @@ jobs:
 
       - name: Fetch OpenCV source
         run: |
-          if (-Not (Test-Path "${{ github.workspace }}/opencv")) {
-            Write-Host "Cloning OpenCV..."
-            git clone --depth 1 -b 4.13.0 https://github.com/opencv/opencv.git opencv
-          } else {
-            Write-Host "OpenCV already present, skipping clone"
-          }
+          Write-Host "Cloning OpenCV..."
+          git clone --depth 1 -b 4.13.0 https://github.com/opencv/opencv.git opencv
+
+
+      # ---- Clean before build ----
+      - name: Clean stale artifacts
+        run: |
+          Write-Host "Cleaning stale executables from opencv/build/bin..."
+          Remove-Item -Path "${{ github.workspace }}/opencv/build/bin" -Recurse -Force -ErrorAction SilentlyContinue
+
+          Write-Host "Cleaning installed files to ensure clean install..."
+          Remove-Item -Path "${{ github.workspace }}/opencv/install/./"* -Recurse -Force -ErrorAction SilentlyContinue
 
       # ---- Build & Install OpenCV (with Ninja) ----
       - name: Build & Install OpenCV (with Ninja)
         run: |
           $opencvSrc = "${{ github.workspace }}/opencv"
-          $opencvBuild = "$opencvSrc/build"
-          $opencvInstall = "$opencvSrc/install"
-
-          cmake -S $opencvSrc -B $opencvBuild `
-            -G Ninja -DCMAKE_BUILD_TYPE=Release `
-            -DCMAKE_INSTALL_PREFIX="$opencvInstall" `
-            "-DBUILD_LIST=core,imgproc" `
-            -DBUILD_SHARED_LIBS=ON `
+          cmake -S $opencvSrc -B "$opencvSrc/build" `-BUILD_SHARED_LIBS=ON
             -DBUILD_TESTS=OFF `
             -DBUILD_PERF_TESTS=OFF `
             -DBUILD_EXAMPLES=OFF `
@@ -96,10 +95,11 @@ jobs:
             -DWITH_QT=OFF `
             -DWITH_OPENGL=OFF
 
-          cmake --build $opencvBuild --parallel 2>&1 | Select-Object -First 50
-          cmake --install $opencvBuild
+          cmake --build "$opencvSrc/build" --parallel 2>&1 | Select-Object -First 50
 
-      # ---- Configure nomacs (simplified, no pkg-config complexity) ----
+          cmake --install "$opencvSrc/build"
+
+      # ---- Configure nomacs (simplified
       - name: Configure nomacs
         run: |
           $opencvInstall = "${{ github.workspace }}/opencv/install"
@@ -124,4 +124,3 @@ jobs:
             --release `
             --no-system-d3d-compiler `
             $pkg\*.exe
-

@@ -132,14 +132,14 @@ jobs:
       - name: Configure nomacs
         run: |
           $workspace = "${{ github.workspace }}"
-          
           cmake `
-            -S ImageLounge `
-            -B build `
-            -G Ninja `
-            "-DCMAKE_BUILD_TYPE=Release" `
-            "-DCMAKE_PREFIX_PATH=$workspace\opencv\install;$Env:Qt6_DIR\..\\" `
-            "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
+             -S ImageLounge `
+             -B build `
+             -G Ninja `
+             "-DCMAKE_BUILD_TYPE=Release" `
+             "-DCMAKE_PREFIX_PATH=$workspace\\opencv\\install;$Env:Qt6_ROOT\\..\\" `
+             "-DQt6_DIR=$Env:Qt6_ROOT\\lib\\cmake\\Qt6" `
+             "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
 
       # ---- Build ----
       - name: Build

@@ -52,7 +52,8 @@ jobs:
             'exiv2:x64-windows',
             'libraw:x64-windows',
             'vulkan-headers:x64-windows',
-            'pkgconf:x64-windows'
+            'pkgconf:x64-windows',
+            'tiff:x64-windows'
           )
 
           foreach ($dep in $dependencies) {

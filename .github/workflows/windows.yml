@@ -68,17 +68,21 @@ jobs:
       # ---- Clean before build ----
       - name: Clean stale artifacts
         run: |
+          $workspace = "${{ github.workspace }}"
+          
           Write-Host "Cleaning stale executables from opencv/build/bin..."
-          if (Test-Path "${{ github.workspace }}/opencv/build/bin") { Remove-Item -Path "${{ github.workspace }}/opencv/build/bin" -Recurse -Force }
+          if (Test-Path "$workspace\opencv\build\bin") { 
+            Remove-Item -Path "$workspace\opencv\build\bin" -Recurse -Force 
+          }
 
       # ---- Build & Install OpenCV (with Ninja) ----
       - name: Build & Install OpenCV (with Ninja)
         run: |
-          $opencvSrc = "${{ github.workspace }}/opencv"
+          $workspace = "${{ github.workspace }}"
           
           cmake `
-            -S "$opencvSrc" `
-            -B "$opencvSrc/build" `
+            -S "$workspace\opencv" `
+            -B "$workspace\opencv\build" `
             -DBUILD_SHARED_LIBS=ON `
             -DBUILD_TESTS=OFF `
             -DBUILD_PERF_TESTS=OFF `
@@ -96,25 +100,28 @@ jobs:
             -DWITH_QT=OFF `
             -DWITH_OPENGL=OFF
 
-          cmake --build "$opencvSrc/build" --parallel 2>&1 | Select-Object -First 50
+          cmake --build "$workspace\opencv\build" --parallel 2>&1 | Select-Object -First 50
 
-          # Clean stale build artifacts to avoid install errors (e.g., opencv_version.exe)
+          # Clean installed files only if install directory exists
+          $installPath = "$workspace\opencv\install"
           Write-Host "Cleaning installed files..."
-          Get-ChildItem -Path "${{ github.workspace }}/opencv/install/." -Recurse | Remove-Item -Force
+          if (Test-Path $installPath) { 
+            Get-ChildItem -Path $installPath -Recurse | Remove-Item -Force 
+          }
 
-          cmake --install "$opencvSrc/build"
+          cmake --install "$workspace\opencv\build"
 
       # ---- Configure nomacs (simplified, no pkg-config complexity) ----
       - name: Configure nomacs
         run: |
-          $opencvInstall = "${{ github.workspace }}/opencv/install"
+          $workspace = "${{ github.workspace }}"
           
           cmake `
             -S ImageLounge `
             -B build `
             -G Ninja `
             "-DCMAKE_BUILD_TYPE=Release" `
-            "-DCMAKE_PREFIX_PATH=$opencvInstall;$Env:Qt6_DIR\..\\"
+            "-DCMAKE_PREFIX_PATH=$workspace\opencv\install;$Env:Qt6_DIR\..\\"
 
       # ---- Build ----
       - name: Build
@@ -126,7 +133,7 @@ jobs:
           $pkg = "package"
           New-Item -ItemType Directory -Force $pkg | Out-Null
 
-          Copy-Item build\*.exe $pkg
+          Copy-Item build\*.exe "$pkg\"
 
           windeployqt `
             --release `

@@ -51,7 +51,8 @@ jobs:
           $dependencies = @(
             'exiv2:x64-windows',
             'libraw:x64-windows',
-            'vulkan-headers:x64-windows'
+            'vulkan-headers:x64-windows',
+            'pkgconf:x64-windows'
           )
 
           foreach ($dep in $dependencies) {
@@ -85,6 +86,7 @@ jobs:
           cmake `
             -G Ninja `
             "-DCMAKE_BUILD_TYPE=Release" `
+            "-DCMAKE_INSTALL_PREFIX=$workspace\opencv\install" `
             -S "$workspace\opencv" `
             -B "$workspace\opencv\build" `
             "-DBUILD_LIST=core,imgproc" `
@@ -135,7 +137,8 @@ jobs:
             -B build `
             -G Ninja `
             "-DCMAKE_BUILD_TYPE=Release" `
-            "-DCMAKE_PREFIX_PATH=$workspace\opencv\install;$Env:Qt6_DIR\..\\"
+            "-DCMAKE_PREFIX_PATH=$workspace\opencv\install;$Env:Qt6_DIR\..\\" `
+            "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
 
       # ---- Build ----
       - name: Build

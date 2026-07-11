@@ -128,6 +128,10 @@ jobs:
 
           cmake --install "$workspace\opencv\build"
 
+      - name: Set NOMACS_DEPENDENCIES env variable
+        run: |
+          echo "NOMACS_DEPENDENCIES=$Env:VCPKG_ROOT\\installed\\x64-windows" >> $Env:GITHUB_ENV
+
       # ---- Configure nomacs (simplified, no pkg-config complexity) ----
       - name: Configure nomacs
         run: |

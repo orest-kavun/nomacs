@@ -128,9 +128,24 @@ jobs:
 
           cmake --install "$workspace\opencv\build"
 
-      - name: Set NOMACS_DEPENDENCIES env variable
+      - name: Prepare NOMACS_DEPENDENCIES (copy to workspace)
         run: |
-          echo "NOMACS_DEPENDENCIES=$Env:VCPKG_ROOT\\installed\\x64-windows" >> $Env:GITHUB_ENV
+          $possiblePaths = @(
+            "C:\\vcpkg\\installed\\x64-windows",
+            "$Env:VCPKG_ROOT\\installed\\x64-windows"
+          )
+          $src = $null
+          foreach ($p in $possiblePaths) {
+            if (Test-Path $p) { $src = $p; break }
+          }
+          if (-not $src) {
+            Write-Error "VCPKG dependencies not found in expected locations."
+            exit 1
+          }
+          $dest = "${{ github.workspace }}\\nomacs_deps"
+          New-Item -ItemType Directory -Force $dest
+          Copy-Item -Recurse -Force "${src}\*" $dest
+          echo "NOMACS_DEPENDENCIES=$dest" >> $Env:GITHUB_ENV
 
       # ---- Configure nomacs (simplified, no pkg-config complexity) ----
       - name: Configure nomacs

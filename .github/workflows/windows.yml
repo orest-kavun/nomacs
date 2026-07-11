@@ -83,8 +83,12 @@ jobs:
           $workspace = "${{ github.workspace }}"
           
           cmake `
+            -G Ninja `
+            -DCMAKE_BUILD_TYPE=Release `
             -S "$workspace\opencv" `
             -B "$workspace\opencv\build" `
+            -DBUILD_LIST=core,imgproc `
+            -DBUILD_opencv_apps=OFF `
             -DBUILD_SHARED_LIBS=ON `
             -DBUILD_TESTS=OFF `
             -DBUILD_PERF_TESTS=OFF `
@@ -102,7 +106,7 @@ jobs:
             -DWITH_QT=OFF `
             -DWITH_OPENGL=OFF
 
-          cmake --build "$workspace\opencv\build" --parallel 2>&1 | Select-Object -First 50
+          cmake --build "$workspace\opencv\build" --parallel
 
           # Clean ALL binaries from build/bin and install directories to avoid stale file errors during install
           Write-Host "Cleaning all executables..."

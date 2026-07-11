@@ -69,10 +69,12 @@ jobs:
       - name: Clean stale artifacts
         run: |
           $workspace = "${{ github.workspace }}"
-          
+
           Write-Host "Cleaning stale executables from opencv/build/bin..."
           if (Test-Path "$workspace\opencv\build\bin") { 
             Remove-Item -Path "$workspace\opencv\build\bin" -Recurse -Force 
+          } else {
+            New-Item -ItemType Directory -Force "$workspace\opencv\build\bin" | Out-Null
           }
 
       # ---- Build & Install OpenCV (with Ninja) ----
@@ -102,11 +104,19 @@ jobs:
 
           cmake --build "$workspace\opencv\build" --parallel 2>&1 | Select-Object -First 50
 
-          # Clean installed files only if install directory exists
+          # Clean ALL binaries from build/bin and install directories to avoid stale file errors during install
+          Write-Host "Cleaning all executables..."
+          
+          $binPath = "$workspace\opencv\build\bin"
+          if (Test-Path $binPath) { 
+            Get-ChildItem -Path $binPath -Filter "*.exe" | Remove-Item -Force 
+          }
+
           $installPath = "$workspace\opencv\install"
           Write-Host "Cleaning installed files..."
           if (Test-Path $installPath) { 
-            Get-ChildItem -Path $installPath -Recurse | Remove-Item -Force 
+            # Only remove directories and .dll/.lib/.cmake files, not headers or configs
+            Get-ChildItem -Path $installPath -Recurse | Where-Object { $_.FullName -like "*\*.exe" } | Remove-Item -Force
           }
 
           cmake --install "$workspace\opencv\build"
@@ -131,7 +141,7 @@ jobs:
       - name: Prepare package
         run: |
           $pkg = "package"
-          New-Item -ItemType Directory -Force $pkg | Out-Null
+          New-Item -ItemType Directory -Force "$pkg" | Out-Null
 
           Copy-Item build\*.exe "$pkg\"
 

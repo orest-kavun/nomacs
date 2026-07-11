@@ -75,7 +75,11 @@ jobs:
       - name: Build & Install OpenCV (with Ninja)
         run: |
           $opencvSrc = "${{ github.workspace }}/opencv"
-          cmake -S $opencvSrc -B "$opencvSrc/build" `-BUILD_SHARED_LIBS=ON
+          
+          cmake `
+            -S "$opencvSrc" `
+            -B "$opencvSrc/build" `
+            -DBUILD_SHARED_LIBS=ON `
             -DBUILD_TESTS=OFF `
             -DBUILD_PERF_TESTS=OFF `
             -DBUILD_EXAMPLES=OFF `
@@ -104,10 +108,13 @@ jobs:
       - name: Configure nomacs
         run: |
           $opencvInstall = "${{ github.workspace }}/opencv/install"
-
-          cmake -S ImageLounge -B build -G Ninja `
-            "-DCMAKE_BUILD_TYPE=Release" `-
-            "-DCMAKE_PREFIX_PATH=$opencvInstall;$Env{Qt6_DIR}\\..\\\""
+          
+          cmake `
+            -S ImageLounge `
+            -B build `
+            -G Ninja `
+            "-DCMAKE_BUILD_TYPE=Release" `
+            "-DCMAKE_PREFIX_PATH=$opencvInstall;$Env:Qt6_DIR\..\\"
 
       # ---- Build ----
       - name: Build
@@ -124,4 +131,4 @@ jobs:
           windeployqt `
             --release `
             --no-system-d3d-compiler `
-            $pkg\*.exe
+            "$pkg/*.exe"

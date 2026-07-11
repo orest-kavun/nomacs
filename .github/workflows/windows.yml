@@ -69,10 +69,7 @@ jobs:
       - name: Clean stale artifacts
         run: |
           Write-Host "Cleaning stale executables from opencv/build/bin..."
-          Remove-Item -Path "${{ github.workspace }}/opencv/build/bin" -Recurse -Force -ErrorAction SilentlyContinue
-
-          Write-Host "Cleaning installed files to ensure clean install..."
-          Remove-Item -Path "${{ github.workspace }}/opencv/install/./"* -Recurse -Force -ErrorAction SilentlyContinue
+          if (Test-Path "${{ github.workspace }}/opencv/build/bin") { Remove-Item -Path "${{ github.workspace }}/opencv/build/bin" -Recurse -Force }
 
       # ---- Build & Install OpenCV (with Ninja) ----
       - name: Build & Install OpenCV (with Ninja)
@@ -97,9 +94,13 @@ jobs:
 
           cmake --build "$opencvSrc/build" --parallel 2>&1 | Select-Object -First 50
 
+          # Clean stale build artifacts to avoid install errors (e.g., opencv_version.exe)
+          Write-Host "Cleaning installed files..."
+          Get-ChildItem -Path "${{ github.workspace }}/opencv/install/." -Recurse | Remove-Item -Force
+
           cmake --install "$opencvSrc/build"
 
-      # ---- Configure nomacs (simplified
+      # ---- Configure nomacs (simplified, no pkg-config complexity) ----
       - name: Configure nomacs
         run: |
           $opencvInstall = "${{ github.workspace }}/opencv/install"

@@ -15,7 +15,6 @@ jobs:
     defaults:
       run:
         shell: pwsh
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -127,35 +126,6 @@ jobs:
           }
 
           cmake --install "$workspace\opencv\build"
-
-      - name: Prepare NOMACS_DEPENDENCIES (copy to workspace)
-        run: |
-          $possiblePaths = @(
-            "C:\\vcpkg\\installed\\x64-windows",
-            "$Env:VCPKG_ROOT\\installed\\x64-windows"
-          )
-          $src = $null
-          foreach ($p in $possiblePaths) {
-            if (Test-Path $p) { $src = $p; break }
-          }
-          if (-not $src) {
-            Write-Error "VCPKG dependencies not found in expected locations."
-            exit 1
-          }
-          $workspace = "${{ github.workspace }}"
-          $opencvBin = "$workspace\\opencv\\install\\x64\\vc18\\bin"
-          $dest = "${{ github.workspace }}\\nomacs_deps"
-          if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
-          New-Item -ItemType Directory -Force $dest
-          # Ensure bin subdirectory
-          $destBin = "$dest\\bin"
-          New-Item -ItemType Directory -Force $destBin
-          # Copy VCPKG binaries (bin folder)
-          $srcBin = "${src}\\bin"
-          if (Test-Path $srcBin) { Copy-Item -Recurse -Force "${srcBin}\\*" $destBin }
-          # Copy OpenCV binaries if they exist
-          if (Test-Path $opencvBin) { Copy-Item -Recurse -Force "${opencvBin}\\*" $destBin }
-          echo "NOMACS_DEPENDENCIES=$dest" >> $Env:GITHUB_ENV
 
       # ---- Configure nomacs (simplified, no pkg-config complexity) ----
       - name: Configure nomacs

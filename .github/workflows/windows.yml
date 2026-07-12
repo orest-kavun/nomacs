@@ -73,8 +73,8 @@ jobs:
           $workspace = "${{ github.workspace }}"
 
           Write-Host "Cleaning stale executables from opencv/build/bin..."
-          if (Test-Path "$workspace\opencv\build\bin") { 
-            Remove-Item -Path "$workspace\opencv\build\bin" -Recurse -Force 
+          if (Test-Path "$workspace\opencv\build\bin") {
+            Remove-Item -Path "$workspace\opencv\build\bin" -Recurse -Force
           } else {
             New-Item -ItemType Directory -Force "$workspace\opencv\build\bin" | Out-Null
           }
@@ -83,7 +83,7 @@ jobs:
       - name: Build & Install OpenCV (with Ninja)
         run: |
           $workspace = "${{ github.workspace }}"
-          
+
           cmake `
             -G Ninja `
             "-DCMAKE_BUILD_TYPE=Release" `
@@ -113,15 +113,15 @@ jobs:
 
           # Clean ALL binaries from build/bin and install directories to avoid stale file errors during install
           Write-Host "Cleaning all executables..."
-          
+
           $binPath = "$workspace\opencv\build\bin"
-          if (Test-Path $binPath) { 
-            Get-ChildItem -Path $binPath -Filter "*.exe" | Remove-Item -Force 
+          if (Test-Path $binPath) {
+            Get-ChildItem -Path $binPath -Filter "*.exe" | Remove-Item -Force
           }
 
           $installPath = "$workspace\opencv\install"
           Write-Host "Cleaning installed files..."
-          if (Test-Path $installPath) { 
+          if (Test-Path $installPath) {
             # Only remove directories and .dll/.lib/.cmake files, not headers or configs
             Get-ChildItem -Path $installPath -Recurse | Where-Object { $_.FullName -like "*\*.exe" } | Remove-Item -Force
           }
@@ -142,9 +142,19 @@ jobs:
             Write-Error "VCPKG dependencies not found in expected locations."
             exit 1
           }
+          $workspace = "${{ github.workspace }}"
+          $opencvBin = "$workspace\\opencv\\install\\x64\\vc18\\bin"
           $dest = "${{ github.workspace }}\\nomacs_deps"
+          if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
           New-Item -ItemType Directory -Force $dest
-          Copy-Item -Recurse -Force "${src}\*" $dest
+          # Ensure bin subdirectory
+          $destBin = "$dest\\bin"
+          New-Item -ItemType Directory -Force $destBin
+          # Copy VCPKG binaries (bin folder)
+          $srcBin = "${src}\\bin"
+          if (Test-Path $srcBin) { Copy-Item -Recurse -Force "${srcBin}\\*" $destBin }
+          # Copy OpenCV binaries if they exist
+          if (Test-Path $opencvBin) { Copy-Item -Recurse -Force "${opencvBin}\\*" $destBin }
           echo "NOMACS_DEPENDENCIES=$dest" >> $Env:GITHUB_ENV
 
       # ---- Configure nomacs (simplified, no pkg-config complexity) ----
@@ -161,6 +171,11 @@ jobs:
              "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
 
       # ---- Build ----
+      - name: Clean Release folder
+        run: |
+          $workspace = "${{ github.workspace }}"
+          $releaseDir = "$workspace\\build\\Release"
+          if (Test-Path $releaseDir) { Remove-Item -Recurse -Force $releaseDir }
       - name: Build
         run: cmake --build build
 

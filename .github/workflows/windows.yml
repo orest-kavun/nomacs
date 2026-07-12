@@ -39,14 +39,13 @@ jobs:
           modules: qt5compat
           cache: true
 
-      # ---- VCPKG Dependencies (simplified, no caching) ----
+      # ---- VCPKG Dependencies (install) -----------------------------------
       - name: Setup and install vcpkg dependencies
         run: |
           Write-Host "Installing Qt6 base for vcpkg..."
           & vcpkg install qt6-base:x64-windows
 
           Write-Host "Installing OpenCV build-time dependencies..."
-
           $dependencies = @(
             'exiv2:x64-windows',
             'libraw:x64-windows',
@@ -54,17 +53,18 @@ jobs:
             'pkgconf:x64-windows',
             'tiff:x64-windows'
           )
-
           foreach ($dep in $dependencies) {
             Write-Host "Installing: $($dep)"
             & vcpkg install --triplet x64-windows $dep
           }
 
+          $nomacsDeps = "$Env:VCPKG_ROOT\\installed\\x64-windows"
+          echo "NOMACS_DEPENDENCIES=$nomacsDeps" >> $Env:GITHUB_ENV
+
       - name: Fetch OpenCV source
         run: |
           Write-Host "Cloning OpenCV..."
           git clone --depth 1 -b 4.13.0 https://github.com/opencv/opencv.git opencv
-
 
       # ---- Clean before build ----
       - name: Clean stale artifacts

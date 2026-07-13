@@ -1,4 +1,22 @@
 set(NOMACS_RC src/nomacs.rc) #add resource file when compiling with MSVC
+
+# ---------------------------------------------------------------------------
+# Define VCPKG_ROOT safely.
+# If the CI workflow exported VCPKG_ROOT we use it.
+# Otherwise fall back to the existing NOMACS_DEPENDENCIES env var (which points to
+#   C:\vcpkg\installed\x64-windows) or finally to the historic hard‑coded path.
+# This logic is safe for local builds where the env var may be absent.
+if(NOT DEFINED VCPKG_ROOT)
+  if(DEFINED ENV{NOMACS_DEPENDENCIES})
+    # Strip the trailing "installed\x64-windows" to get the root directory.
+    get_filename_component(_root "$ENV{NOMACS_DEPENDENCIES}" DIRECTORY)
+    set(VCPKG_ROOT "${_root}")
+  else()
+    # Historic default – kept for backward compatibility.
+    set(VCPKG_ROOT "C:/vcpkg")
+  endif()
+endif()
+# ---------------------------------------------------------------------------
 set(VERSION_LIB Version.lib)
 
 # create the targets

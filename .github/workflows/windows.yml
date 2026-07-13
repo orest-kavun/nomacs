@@ -35,6 +35,7 @@ jobs:
           target: "desktop"
           arch: "win64_msvc2019_64"
           modules: qt5compat
+          archives: 'qttools'
           dir: ${{ runner.temp }}/qt
           cache: true
 

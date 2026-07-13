@@ -34,7 +34,8 @@ jobs:
           host: "windows"
           target: "desktop"
           arch: "win64_msvc2019_64"
-          modules: qt5compat,qttools
+          modules: qt5compat
+          archives: qttools
           cache: true
 
       - name: Setup and install vcpkg dependencies

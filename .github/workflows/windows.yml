@@ -21,14 +21,12 @@ jobs:
           lfs: true
           ref: ${{ github.event.pull_request.head.sha }}
 
-      # ---- Toolchain ----
       - name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@v1
 
       - name: Setup Ninja
         uses: seanmiddleditch/gha-setup-ninja@v4
 
-      # ---- Qt ----
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
@@ -39,7 +37,6 @@ jobs:
           modules: qt5compat
           cache: true
 
-      # ---- VCPKG Dependencies (install) -----------------------------------
       - name: Setup and install vcpkg dependencies
         run: |
           Write-Host "Installing Qt6 base for vcpkg..."
@@ -51,7 +48,16 @@ jobs:
             'libraw:x64-windows',
             'vulkan-headers:x64-windows',
             'pkgconf:x64-windows',
-            'tiff:x64-windows'
+            'tiff:x64-windows',
+            'zlib:x64-windows',
+            'brotli:x64-windows',
+            'expat:x64-windows',
+            'openexr:x64-windows',
+            'libwebp:x64-windows',
+            'libheif:x64-windows',
+            'dav1d:x64-windows',
+            'libjxl:x64-windows',
+            'karchive:x64-windows'
           )
           foreach ($dep in $dependencies) {
             Write-Host "Installing: $($dep)"
@@ -65,6 +71,23 @@ jobs:
           Write-Host "Setting NOMACS_DEPENDENCIES='$deps'"
           echo "NOMACS_DEPENDENCIES=$deps" >> $Env:GITHUB_ENV
         shell: pwsh
+
+      - name: Fetch OpenCV source
+        run: |
+          Write-Host "Cloning OpenCV..."
+          git clone --depth 1 -b 4.13.0 https://github.com/opencv/opencv.git opencv
+
+      - name: Clean stale artifacts
+        run: |
+          $workspace = "${{ github.workspace }}"
+
+          Write-Host "Cleaning stale executables from opencv/build/bin..."
+          if (Test-Path "$workspace\opencv\build\bin") {
+            Remove-Item -Path "$workspace\opencv\build\bin" -Recurse -Force
+          } else {
+            New-Item -ItemType Directory -Force "$workspace\opencv\build\bin" | Out-Null
+          }
+
       - name: List installed DLLs
         run: |
           Write-Host "NOMACS_DEPENDENCIES='$Env:NOMACS_DEPENDENCIES'"
@@ -82,26 +105,6 @@ jobs:
           Write-Host "Filesystem under ${workspace}:"
           Get-ChildItem -Path $workspace -Recurse -Force | ForEach-Object { Write-Host $_.FullName }
         shell: pwsh
-
-
-      - name: Fetch OpenCV source
-        run: |
-          Write-Host "Cloning OpenCV..."
-          git clone --depth 1 -b 4.13.0 https://github.com/opencv/opencv.git opencv
-
-      # ---- Clean before build ----
-      - name: Clean stale artifacts
-        run: |
-          $workspace = "${{ github.workspace }}"
-
-          Write-Host "Cleaning stale executables from opencv/build/bin..."
-          if (Test-Path "$workspace\opencv\build\bin") {
-            Remove-Item -Path "$workspace\opencv\build\bin" -Recurse -Force
-          } else {
-            New-Item -ItemType Directory -Force "$workspace\opencv\build\bin" | Out-Null
-          }
-
-      # ---- Build & Install OpenCV (with Ninja) ----
       - name: Build & Install OpenCV (with Ninja)
         run: |
           $workspace = "${{ github.workspace }}"
@@ -150,7 +153,6 @@ jobs:
 
           cmake --install "$workspace\opencv\build"
 
-      # ---- Configure nomacs (simplified, no pkg-config complexity) ----
       - name: Configure nomacs
         run: |
           $workspace = "${{ github.workspace }}"
@@ -163,7 +165,6 @@ jobs:
              "-DQt6_DIR=$Env:Qt6_ROOT\\lib\\cmake\\Qt6" `
              "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
 
-      # ---- Build ----
       - name: Clean Release folder
         run: |
           $workspace = "${{ github.workspace }}"
@@ -172,7 +173,6 @@ jobs:
       - name: Build
         run: cmake --build build
 
-      # ---- Package ----
       - name: Prepare package
         run: |
           $pkg = "package"

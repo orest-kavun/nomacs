@@ -13,7 +13,7 @@ if(NOT DEFINED VCPKG_ROOT)
     set(VCPKG_ROOT "${_root}")
   else()
     # Historic default – kept for backward compatibility.
-    set(VCPKG_ROOT "C:/vcpkg")
+# set(VCPKG_ROOT "C:/vcpkg")  # kept for reference – overridden by safe block above
   endif()
 endif()
 # ---------------------------------------------------------------------------
@@ -178,7 +178,7 @@ file(COPY ${QT_QMAKE_PATH}/Qt6Svg.dll DESTINATION ${CMAKE_BINARY_DIR}/Release/)
 
 # Themes
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/Release/styles)
-file(COPY ${QT_QMAKE_PATH}/../plugins/styles/qmodernwindowsstyle.dll DESTINATION ${CMAKE_BINARY_DIR}/Release/styles/)
+file(COPY "$ENV{QT_PLUGIN_PATH}/styles/qmodernwindowsstyle.dll" DESTINATION "${CMAKE_BINARY_DIR}/Release/styles/")
 
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/Release/tls)
 file(GLOB QT_TLS_PLUGINS "${QT_QMAKE_PATH}/../plugins/tls/*.dll")

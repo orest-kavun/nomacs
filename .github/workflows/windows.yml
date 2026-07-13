@@ -39,8 +39,8 @@ jobs:
 
       - name: Setup and install vcpkg dependencies
         run: |
-          Write-Host "Installing Qt6 base for vcpkg..."
-          & vcpkg install qt6-base:x64-windows
+          # Write-Host "Installing Qt6 base for vcpkg..."
+          # & vcpkg install qt6-base:x64-windows
 
           Write-Host "Installing OpenCV build-time dependencies..."
           $dependencies = @(

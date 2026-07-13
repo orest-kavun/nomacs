@@ -60,19 +60,27 @@ jobs:
 
       - name: Set NOMACS_DEPENDENCIES env var
         run: |
-          $deps = "C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\vcpkg\installed\x64-windows"
+          # Use the default vcpkg installation path on the GitHub runner
+          $deps = "C:\vcpkg\installed\x64-windows"
           Write-Host "Setting NOMACS_DEPENDENCIES='$deps'"
           echo "NOMACS_DEPENDENCIES=$deps" >> $Env:GITHUB_ENV
         shell: pwsh
       - name: List installed DLLs
         run: |
           Write-Host "NOMACS_DEPENDENCIES='$Env:NOMACS_DEPENDENCIES'"
-          $bin = "$Env:NOMACS_DEPENDENCIES\bin"
+          $bin = "$Env:NOMACS_DEPENDENCIES\\bin"
           if (Test-Path $bin) {
             Get-ChildItem -Path $bin -File | ForEach-Object { Write-Host "DLL: $($_.FullName)" }
           } else {
             Write-Warning "Directory not found: $bin"
           }
+        shell: pwsh
+
+      - name: Print filesystem structure
+        run: |
+          $workspace = "${{ github.workspace }}"
+          Write-Host "Filesystem under $workspace:"
+          Get-ChildItem -Path $workspace -Recurse -Force | ForEach-Object { Write-Host $_.FullName }
         shell: pwsh
 
 

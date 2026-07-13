@@ -58,8 +58,14 @@ jobs:
             & vcpkg install --triplet x64-windows $dep
           }
 
-          $nomacsDeps = "$Env:VCPKG_ROOT\\installed\\x64-windows"
-          echo "NOMACS_DEPENDENCIES=$nomacsDeps" >> $Env:GITHUB_ENV
+          # Use VCPKG_ROOT provided by actions/setup-vcpkg to locate the installed packages
+          $nomacsDeps = "${{ env.VCPKG_ROOT }}\\installed\\x64-windows"
+          Write-Host "Exporting NOMACS_DEPENDENCIES=$nomacsDeps"
+          "NOMACS_DEPENDENCIES=$nomacsDeps" >> $Env:GITHUB_ENV
+          # ---- Verification ----
+          Write-Host "NOMACS_DEPENDENCIES set to: $Env:NOMACS_DEPENDENCIES"
+          Write-Host "Listing DLLs in \$Env:NOMACS_DEPENDENCIES\\bin:"
+          Get-ChildItem -Path "$Env:NOMACS_DEPENDENCIES\\bin" -File | ForEach-Object { Write-Host $_.Name }
 
       - name: Fetch OpenCV source
         run: |

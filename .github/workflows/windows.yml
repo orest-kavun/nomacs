@@ -79,7 +79,7 @@ jobs:
       - name: Print filesystem structure
         run: |
           $workspace = "${{ github.workspace }}"
-          Write-Host "Filesystem under $workspace:"
+          Write-Host "Filesystem under ${workspace}:"
           Get-ChildItem -Path $workspace -Recurse -Force | ForEach-Object { Write-Host $_.FullName }
         shell: pwsh
 

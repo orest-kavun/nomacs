@@ -58,14 +58,23 @@ jobs:
             & vcpkg install --triplet x64-windows $dep
           }
 
-          # Use VCPKG_ROOT provided by actions/setup-vcpkg to locate the installed packages
-          $nomacsDeps = "${{ env.VCPKG_ROOT }}\\installed\\x64-windows"
-          Write-Host "Exporting NOMACS_DEPENDENCIES=$nomacsDeps"
-          "NOMACS_DEPENDENCIES=$nomacsDeps" >> $Env:GITHUB_ENV
-          # ---- Verification ----
-          Write-Host "NOMACS_DEPENDENCIES set to: $Env:NOMACS_DEPENDENCIES"
-          Write-Host "Listing DLLs in \$Env:NOMACS_DEPENDENCIES\\bin:"
-          Get-ChildItem -Path "$Env:NOMACS_DEPENDENCIES\\bin" -File | ForEach-Object { Write-Host $_.Name }
+      - name: Set NOMACS_DEPENDENCIES env var
+        run: |
+          $deps = "C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\vcpkg\installed\x64-windows"
+          Write-Host "Setting NOMACS_DEPENDENCIES='$deps'"
+          echo "NOMACS_DEPENDENCIES=$deps" >> $Env:GITHUB_ENV
+        shell: pwsh
+      - name: List installed DLLs
+        run: |
+          Write-Host "NOMACS_DEPENDENCIES='$Env:NOMACS_DEPENDENCIES'"
+          $bin = "$Env:NOMACS_DEPENDENCIES\bin"
+          if (Test-Path $bin) {
+            Get-ChildItem -Path $bin -File | ForEach-Object { Write-Host "DLL: $($_.FullName)" }
+          } else {
+            Write-Warning "Directory not found: $bin"
+          }
+        shell: pwsh
+
 
       - name: Fetch OpenCV source
         run: |

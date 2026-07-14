@@ -1,22 +1,4 @@
 set(NOMACS_RC src/nomacs.rc) #add resource file when compiling with MSVC
-
-# ---------------------------------------------------------------------------
-# Define VCPKG_ROOT safely.
-# If the CI workflow exported VCPKG_ROOT we use it.
-# Otherwise fall back to the existing NOMACS_DEPENDENCIES env var (which points to
-#   C:\vcpkg\installed\x64-windows) or finally to the historic hard‑coded path.
-# This logic is safe for local builds where the env var may be absent.
-if(NOT DEFINED VCPKG_ROOT)
-  if(DEFINED ENV{NOMACS_DEPENDENCIES})
-    # Strip the trailing "installed\x64-windows" to get the root directory.
-    get_filename_component(_root "$ENV{NOMACS_DEPENDENCIES}" DIRECTORY)
-    set(VCPKG_ROOT "${_root}")
-  else()
-    # Historic default – kept for backward compatibility.
-# set(VCPKG_ROOT "C:/vcpkg")  # kept for reference – overridden by safe block above
-  endif()
-endif()
-# ---------------------------------------------------------------------------
 set(VERSION_LIB Version.lib)
 
 # create the targets
@@ -178,7 +160,7 @@ file(COPY ${QT_QMAKE_PATH}/Qt6Svg.dll DESTINATION ${CMAKE_BINARY_DIR}/Release/)
 
 # Themes
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/Release/styles)
-file(COPY "$ENV{QT_PLUGIN_PATH}/styles/qmodernwindowsstyle.dll" DESTINATION "${CMAKE_BINARY_DIR}/Release/styles/")
+file(COPY ${QT_QMAKE_PATH}/../plugins/styles/qmodernwindowsstyle.dll DESTINATION ${CMAKE_BINARY_DIR}/Release/styles/)
 
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/Release/tls)
 file(GLOB QT_TLS_PLUGINS "${QT_QMAKE_PATH}/../plugins/tls/*.dll")

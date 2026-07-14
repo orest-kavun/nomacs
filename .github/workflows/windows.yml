@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           lfs: true
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@v1
@@ -35,7 +35,6 @@ jobs:
           target: "desktop"
           arch: "win64_msvc2019_64"
           modules: qt5compat
-          archives: 'qttools'
           cache: true
 
       - name: Setup and install vcpkg dependencies
@@ -57,10 +56,7 @@ jobs:
             'libjxl:x64-windows',
             'karchive:x64-windows'
           )
-          foreach ($dep in $dependencies) {
-            Write-Host "Installing: $($dep)"
-            & vcpkg install --triplet x64-windows $dep
-          }
+          vcpkg install --triplet x64-windows @dependencies
 
       - name: Set NOMACS_DEPENDENCIES env var
         run: |
@@ -75,44 +71,14 @@ jobs:
           Write-Host "Cloning OpenCV..."
           git clone --depth 1 -b 4.13.0 https://github.com/opencv/opencv.git opencv
 
-      - name: Clean stale artifacts
-        run: |
-          $workspace = "${{ github.workspace }}"
-
-          Write-Host "Cleaning stale executables from opencv/build/bin..."
-          if (Test-Path "$workspace\opencv\build\bin") {
-            Remove-Item -Path "$workspace\opencv\build\bin" -Recurse -Force
-          } else {
-            New-Item -ItemType Directory -Force "$workspace\opencv\build\bin" | Out-Null
-          }
-
-      - name: List installed DLLs
-        run: |
-          Write-Host "NOMACS_DEPENDENCIES='$Env:NOMACS_DEPENDENCIES'"
-          $bin = "$Env:NOMACS_DEPENDENCIES\\bin"
-          if (Test-Path $bin) {
-            Get-ChildItem -Path $bin -File | ForEach-Object { Write-Host "DLL: $($_.FullName)" }
-          } else {
-            Write-Warning "Directory not found: $bin"
-          }
-        shell: pwsh
-
-      - name: Print filesystem structure
-        run: |
-          $workspace = "${{ github.workspace }}"
-          Write-Host "Filesystem under ${workspace}:"
-          Get-ChildItem -Path $workspace -Recurse -Force | ForEach-Object { Write-Host $_.FullName }
-        shell: pwsh
       - name: Build & Install OpenCV (with Ninja)
         run: |
-          $workspace = "${{ github.workspace }}"
-
           cmake `
             -G Ninja `
             "-DCMAKE_BUILD_TYPE=Release" `
-            "-DCMAKE_INSTALL_PREFIX=$workspace\opencv\install" `
-            -S "$workspace\opencv" `
-            -B "$workspace\opencv\build" `
+            "-DCMAKE_INSTALL_PREFIX=opencv\install" `
+            -S opencv `
+            -B opencv\build `
             "-DBUILD_LIST=core,imgproc" `
             "-DBUILD_opencv_apps=OFF" `
             "-DBUILD_SHARED_LIBS=ON" `
@@ -132,42 +98,20 @@ jobs:
             "-DWITH_QT=OFF" `
             "-DWITH_OPENGL=OFF"
 
-          cmake --build "$workspace\opencv\build" --parallel
-
-          # Clean ALL binaries from build/bin and install directories to avoid stale file errors during install
-          Write-Host "Cleaning all executables..."
-
-          $binPath = "$workspace\opencv\build\bin"
-          if (Test-Path $binPath) {
-            Get-ChildItem -Path $binPath -Filter "*.exe" | Remove-Item -Force
-          }
-
-          $installPath = "$workspace\opencv\install"
-          Write-Host "Cleaning installed files..."
-          if (Test-Path $installPath) {
-            # Only remove directories and .dll/.lib/.cmake files, not headers or configs
-            Get-ChildItem -Path $installPath -Recurse | Where-Object { $_.FullName -like "*\*.exe" } | Remove-Item -Force
-          }
-
-          cmake --install "$workspace\opencv\build"
+          cmake --build opencv\build --parallel
+          cmake --install opencv\build
 
       - name: Configure nomacs
         run: |
-          $workspace = "${{ github.workspace }}"
           cmake `
              -S ImageLounge `
              -B build `
              -G Ninja `
              "-DCMAKE_BUILD_TYPE=Release" `
-             "-DCMAKE_PREFIX_PATH=$workspace\\opencv\\install;$Env:Qt6_ROOT\\..\\" `
+             "-DCMAKE_PREFIX_PATH=opencv\\install;$Env:Qt6_ROOT\\..\\" `
              "-DQt6_DIR=$Env:Qt6_ROOT\\lib\\cmake\\Qt6" `
              "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
 
-      - name: Clean Release folder
-        run: |
-          $workspace = "${{ github.workspace }}"
-          $releaseDir = "$workspace\\build\\Release"
-          if (Test-Path $releaseDir) { Remove-Item -Recurse -Force $releaseDir }
       - name: Build
         run: cmake --build build
 

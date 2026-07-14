@@ -11,6 +11,13 @@ jobs:
   build:
     runs-on: windows-latest
     name: build (windows-msvc)
+    env:
+      VCPKG_TRIPLET: x64-windows
+      VCPKG_DEPENDENCIES: >-
+        exiv2:x64-windows libraw:x64-windows vulkan-headers:x64-windows
+        pkgconf:x64-windows tiff:x64-windows zlib:x64-windows brotli:x64-windows
+        expat:x64-windows openexr:x64-windows libwebp:x64-windows libheif:x64-windows
+        dav1d:x64-windows libjxl:x64-windows karchive:x64-windows
 
     defaults:
       run:
@@ -27,6 +34,30 @@ jobs:
       - name: Setup Ninja
         uses: seanmiddleditch/gha-setup-ninja@v4
 
+      - name: Calculate vcpkg cache key
+        id: vcpkg-cache-key
+        run: |
+          $cacheInput = @(
+            $Env:VCPKG_TRIPLET
+            $Env:VCPKG_DEPENDENCIES
+            (vcpkg version | Out-String)
+          ) -join "`n"
+          $algorithm = [System.Security.Cryptography.SHA256]::Create()
+          try {
+            $bytes = [System.Text.Encoding]::UTF8.GetBytes($cacheInput)
+            $hash = -join ($algorithm.ComputeHash($bytes) | ForEach-Object { $_.ToString('x2') })
+          } finally {
+            $algorithm.Dispose()
+          }
+          "key=$hash" >> $Env:GITHUB_OUTPUT
+
+      - name: Restore vcpkg binary cache
+        id: vcpkg-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}\vcpkg-binary-cache
+          key: vcpkg-binaries-${{ runner.os }}-${{ steps.vcpkg-cache-key.outputs.key }}
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
@@ -38,25 +69,19 @@ jobs:
           cache: true
 
       - name: Setup and install vcpkg dependencies
+        env:
+          VCPKG_BINARY_SOURCES: clear;files,${{ runner.temp }}\vcpkg-binary-cache,readwrite
         run: |
           Write-Host "Installing OpenCV build-time dependencies..."
-          $dependencies = @(
-            'exiv2:x64-windows',
-            'libraw:x64-windows',
-            'vulkan-headers:x64-windows',
-            'pkgconf:x64-windows',
-            'tiff:x64-windows',
-            'zlib:x64-windows',
-            'brotli:x64-windows',
-            'expat:x64-windows',
-            'openexr:x64-windows',
-            'libwebp:x64-windows',
-            'libheif:x64-windows',
-            'dav1d:x64-windows',
-            'libjxl:x64-windows',
-            'karchive:x64-windows'
-          )
-          vcpkg install --triplet x64-windows @dependencies
+          $dependencies = $Env:VCPKG_DEPENDENCIES -split '\s+'
+          vcpkg install --triplet $Env:VCPKG_TRIPLET @dependencies
+
+      - name: Save vcpkg binary cache
+        if: ${{ always() && steps.vcpkg-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}\vcpkg-binary-cache
+          key: vcpkg-binaries-${{ runner.os }}-${{ steps.vcpkg-cache-key.outputs.key }}
 
       - name: Set NOMACS_DEPENDENCIES env var
         run: |

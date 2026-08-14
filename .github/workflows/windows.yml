@@ -83,6 +83,38 @@ jobs:
           path: ${{ runner.temp }}\vcpkg-binary-cache
           key: vcpkg-binaries-${{ runner.os }}-${{ steps.vcpkg-cache-key.outputs.key }}
 
+      - name: Verify Windows runtime dependencies
+        run: |
+          $vcpkgExe = (Get-Command vcpkg -CommandType Application).Source
+          $vcpkgRoot = Split-Path -Parent $vcpkgExe
+          $vcpkgPrefix = Join-Path $vcpkgRoot "installed\$Env:VCPKG_TRIPLET"
+          Write-Host "vcpkg executable: $vcpkgExe"
+          Write-Host "vcpkg prefix: $vcpkgPrefix"
+          cmake --version
+          & "$Env:QT_ROOT_DIR\bin\qmake.exe" -v
+          Get-Command qmake -All | Select-Object -ExpandProperty Source
+
+          $requiredDlls = @(
+            "zlib1.dll", "jpeg62.dll", "brotlicommon.dll", "brotlidec.dll",
+            "brotlienc.dll", "exiv2.dll", "libexpat.dll", "lcms2.dll",
+            "raw.dll", "opencv_core4130.dll", "opencv_imgproc4130.dll",
+            "libsharpyuv.dll", "tiff.dll", "libwebp.dll", "OpenEXR-3_4.dll",
+            "IlmThread-3_4.dll", "OpenEXRCore-3_4.dll", "Iex-3_4.dll",
+            "Imath-3_2.dll", "heif.dll", "libde265.dll", "openh264-7.dll",
+            "openjp2.dll", "avif.dll", "dav1d.dll", "jxl.dll",
+            "jxl_threads.dll", "jxl_cms.dll", "KF6Archive.dll"
+          )
+          $missingDlls = $requiredDlls | Where-Object {
+            $dll = Join-Path $vcpkgPrefix "bin\$_"
+            if (-not (Test-Path -LiteralPath $dll -PathType Leaf)) {
+              Write-Host "Missing: $dll"
+              $true
+            }
+          }
+          if ($missingDlls) {
+            throw "The deployment script requires missing vcpkg DLLs: $($missingDlls -join ', ')"
+          }
+
       - name: Set NOMACS_DEPENDENCIES env var
         run: |
           # Use the default vcpkg installation path on the GitHub runner

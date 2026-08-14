@@ -75,13 +75,13 @@ jobs:
           modules: qt5compat
           cache: true
 
-      # The 6.6.2 Windows package leaves this generated argument empty, which
-      # turns the macro call into a zero-argument invocation.  Preserve it as
-      # an explicit empty argument instead.
+      # The 6.6.2 Windows package leaves this generated value empty, which
+      # turns the macro call into a zero-argument invocation.  It is false
+      # for this native build, so make that value explicit.
       - name: Repair Qt host-info package configuration
         run: |
           $pattern = '_qt_internal_find_host_info_package\(\$\{__qt_platform_requires_host_info_package\}\)'
-          $replacement = '_qt_internal_find_host_info_package("${__qt_platform_requires_host_info_package}")'
+          $replacement = '_qt_internal_find_host_info_package(FALSE)'
           $patchedFiles = 0
           Get-ChildItem "$Env:QT_ROOT_DIR\lib\cmake" -Recurse -Filter "*Dependencies.cmake" |
             ForEach-Object {

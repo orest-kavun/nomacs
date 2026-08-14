@@ -17,7 +17,8 @@ jobs:
         exiv2:x64-windows libraw:x64-windows vulkan-headers:x64-windows
         pkgconf:x64-windows tiff:x64-windows zlib:x64-windows brotli:x64-windows
         expat:x64-windows openexr:x64-windows libwebp:x64-windows libheif:x64-windows
-        dav1d:x64-windows libjxl:x64-windows karchive:x64-windows
+        dav1d:x64-windows libjxl:x64-windows karchive:x64-windows openh264:x64-windows
+        openjpeg:x64-windows libavif:x64-windows
 
     defaults:
       run:
@@ -107,7 +108,7 @@ jobs:
           }
           $runtimeDlls = Get-ChildItem -LiteralPath $vcpkgBin -File -Filter "*.dll"
           Write-Host "vcpkg release DLLs: $($runtimeDlls.Name -join ', ')"
-          if (-not ($runtimeDlls.Name -match '^zlib(1)?\.dll$')) {
+          if (-not ($runtimeDlls.Name -match '^z(lib|lib1)?\.dll$')) {
             throw "vcpkg zlib runtime is absent; installed DLLs are listed above."
           }
 
@@ -176,9 +177,13 @@ jobs:
             throw "vcpkg release runtime directory was not found: $vcpkgBin"
           }
           $availableDlls = Get-ChildItem -LiteralPath $vcpkgBin -File -Filter "*.dll"
-          # Current vcpkg calls the zlib runtime zlib.dll; the legacy nomacs
-          # deployment script expects the historical zlib1.dll filename.
-          $sourceNames = @{ "zlib1.dll" = @("zlib1.dll", "zlib.dll") }
+          # vcpkg's current runtime names differ from the legacy nomacs
+          # deployment script for these three ports.
+          $sourceNames = @{
+            "zlib1.dll" = @("zlib1.dll", "zlib.dll", "z.dll")
+            "lcms2.dll" = @("lcms2.dll", "lcms2-2.dll")
+            "openh264-7.dll" = @("openh264-7.dll", "openh264.dll")
+          }
           foreach ($dll in $requiredDlls) {
             $source = if ($dll -like "opencv_*.dll") {
               Get-ChildItem "$Env:GITHUB_WORKSPACE\opencv\install\x64\vc18\bin" -File -Filter $dll | Select-Object -First 1

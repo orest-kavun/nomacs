@@ -95,7 +95,9 @@ jobs:
         run: |
           Write-Host "Installing OpenCV build-time dependencies..."
           $dependencies = $Env:VCPKG_DEPENDENCIES -split '\s+'
-          vcpkg install --triplet $Env:VCPKG_TRIPLET @dependencies
+          $installRoot = "$Env:GITHUB_WORKSPACE\vcpkg-installed"
+          vcpkg install --triplet $Env:VCPKG_TRIPLET --x-install-root $installRoot @dependencies
+          "VCPKG_INSTALLED_DIR=$installRoot" >> $Env:GITHUB_ENV
 
       - name: Save vcpkg binary cache
         if: ${{ always() && steps.vcpkg-cache.outputs.cache-hit != 'true' }}
@@ -155,11 +157,9 @@ jobs:
             "openjp2.dll", "avif.dll", "dav1d.dll", "jxl.dll",
             "jxl_threads.dll", "jxl_cms.dll", "KF6Archive.dll"
           )
-          # The command above invokes C:\vcpkg\vcpkg.exe, which installs the
-          # release runtime in its installed tree. VCPKG_ROOT still points at
-          # Visual Studio's bundled vcpkg after MSVC setup, so do not use it
-          # to discover the artifacts of this invocation.
-          $vcpkgBin = "C:\vcpkg\installed\$Env:VCPKG_TRIPLET\bin"
+          # VCPKG_ROOT points at Visual Studio's bundled vcpkg after MSVC
+          # setup. Use the explicit install root from the invocation above.
+          $vcpkgBin = "$Env:VCPKG_INSTALLED_DIR\$Env:VCPKG_TRIPLET\bin"
           if (-not (Test-Path -LiteralPath $vcpkgBin -PathType Container)) {
             throw "vcpkg release runtime directory was not found: $vcpkgBin"
           }
@@ -238,9 +238,10 @@ jobs:
              "-DCMAKE_BUILD_TYPE=Release" `
              "-DOpenCV_DIR=$Env:GITHUB_WORKSPACE\opencv\install" `
              "-DQt6_DIR=$Env:QT_ROOT_DIR\lib\cmake\Qt6" `
-             "-DQT_QMAKE_EXECUTABLE=$Env:QT_ROOT_DIR\bin\qmake.exe" `
-             "-DVCPKG_PREFER_SYSTEM_LIBS=ON" `
-             "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
+               "-DQT_QMAKE_EXECUTABLE=$Env:QT_ROOT_DIR\bin\qmake.exe" `
+               "-DVCPKG_PREFER_SYSTEM_LIBS=ON" `
+               "-DVCPKG_INSTALLED_DIR=$Env:VCPKG_INSTALLED_DIR" `
+               "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
 
       - name: Build
         run: cmake --build build

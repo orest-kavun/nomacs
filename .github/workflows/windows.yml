@@ -104,46 +104,6 @@ jobs:
           path: ${{ runner.temp }}\vcpkg-binary-cache
           key: vcpkg-binaries-${{ runner.os }}-${{ steps.vcpkg-cache-key.outputs.key }}
 
-      - name: Set NOMACS_DEPENDENCIES env var
-        run: |
-          # vcpkg.exe is on PATH from C:\vcpkg, but the MSVC environment sets
-          # VCPKG_ROOT to the installed prefix that contains these DLLs.
-          $deps = Join-Path $Env:VCPKG_ROOT "installed\$Env:VCPKG_TRIPLET"
-          if (-not (Test-Path -LiteralPath "$deps\bin\zlib1.dll" -PathType Leaf)) {
-            throw "vcpkg runtime prefix does not contain zlib1.dll: $deps"
-          }
-          Write-Host "Setting NOMACS_DEPENDENCIES='$deps'"
-          "NOMACS_DEPENDENCIES=$deps" >> $Env:GITHUB_ENV
-
-      - name: Verify Windows runtime dependencies
-        run: |
-          $vcpkgPrefix = $Env:NOMACS_DEPENDENCIES
-          Write-Host "vcpkg prefix: $vcpkgPrefix"
-          cmake --version
-          & "$Env:QT_ROOT_DIR\bin\qmake.exe" -v
-          Get-Command qmake -All | Select-Object -ExpandProperty Source
-
-          $requiredDlls = @(
-            "zlib1.dll", "jpeg62.dll", "brotlicommon.dll", "brotlidec.dll",
-            "brotlienc.dll", "exiv2.dll", "libexpat.dll", "lcms2.dll",
-            "raw.dll", "opencv_core4130.dll", "opencv_imgproc4130.dll",
-            "libsharpyuv.dll", "tiff.dll", "libwebp.dll", "OpenEXR-3_4.dll",
-            "IlmThread-3_4.dll", "OpenEXRCore-3_4.dll", "Iex-3_4.dll",
-            "Imath-3_2.dll", "heif.dll", "libde265.dll", "openh264-7.dll",
-            "openjp2.dll", "avif.dll", "dav1d.dll", "jxl.dll",
-            "jxl_threads.dll", "jxl_cms.dll", "KF6Archive.dll"
-          )
-          $missingDlls = $requiredDlls | Where-Object {
-            $dll = Join-Path $vcpkgPrefix "bin\$_"
-            if (-not (Test-Path -LiteralPath $dll -PathType Leaf)) {
-              Write-Host "Missing: $dll"
-              $true
-            }
-          }
-          if ($missingDlls) {
-            throw "The deployment script requires missing vcpkg DLLs: $($missingDlls -join ', ')"
-          }
-
       - name: Fetch OpenCV source
         run: |
           Write-Host "Cloning OpenCV..."
@@ -178,6 +138,58 @@ jobs:
 
           cmake --build opencv\build --parallel
           cmake --install opencv\build
+
+      - name: Assemble NOMACS_DEPENDENCIES runtime prefix
+        run: |
+          $deps = "$Env:GITHUB_WORKSPACE\runtime-dependencies"
+          $bin = "$deps\bin"
+          New-Item -ItemType Directory -Force $bin | Out-Null
+
+          $requiredDlls = @(
+            "zlib1.dll", "jpeg62.dll", "brotlicommon.dll", "brotlidec.dll",
+            "brotlienc.dll", "exiv2.dll", "libexpat.dll", "lcms2.dll",
+            "raw.dll", "opencv_core4130.dll", "opencv_imgproc4130.dll",
+            "libsharpyuv.dll", "tiff.dll", "libwebp.dll", "OpenEXR-3_4.dll",
+            "IlmThread-3_4.dll", "OpenEXRCore-3_4.dll", "Iex-3_4.dll",
+            "Imath-3_2.dll", "heif.dll", "libde265.dll", "openh264-7.dll",
+            "openjp2.dll", "avif.dll", "dav1d.dll", "jxl.dll",
+            "jxl_threads.dll", "jxl_cms.dll", "KF6Archive.dll"
+          )
+          $packageRoots = @("C:\vcpkg\packages", "$Env:VCPKG_ROOT\packages") |
+            Where-Object { Test-Path -LiteralPath $_ } | Select-Object -Unique
+          $availableDlls = Get-ChildItem -Path $packageRoots -Recurse -File -Filter "*.dll" |
+            Where-Object { $_.FullName -notmatch '\\debug\\' }
+          foreach ($dll in $requiredDlls) {
+            $source = if ($dll -like "opencv_*.dll") {
+              Get-ChildItem "$Env:GITHUB_WORKSPACE\opencv\install\x64\vc18\bin" -File -Filter $dll | Select-Object -First 1
+            } else {
+              $availableDlls | Where-Object Name -ieq $dll | Select-Object -First 1
+            }
+            if (-not $source) {
+              throw "No release runtime DLL found for $dll"
+            }
+            Copy-Item -LiteralPath $source.FullName -Destination $bin -Force
+          }
+          "NOMACS_DEPENDENCIES=$deps" >> $Env:GITHUB_ENV
+
+      - name: Verify Windows runtime dependencies
+        run: |
+          $requiredDlls = @(
+            "zlib1.dll", "jpeg62.dll", "brotlicommon.dll", "brotlidec.dll",
+            "brotlienc.dll", "exiv2.dll", "libexpat.dll", "lcms2.dll",
+            "raw.dll", "opencv_core4130.dll", "opencv_imgproc4130.dll",
+            "libsharpyuv.dll", "tiff.dll", "libwebp.dll", "OpenEXR-3_4.dll",
+            "IlmThread-3_4.dll", "OpenEXRCore-3_4.dll", "Iex-3_4.dll",
+            "Imath-3_2.dll", "heif.dll", "libde265.dll", "openh264-7.dll",
+            "openjp2.dll", "avif.dll", "dav1d.dll", "jxl.dll",
+            "jxl_threads.dll", "jxl_cms.dll", "KF6Archive.dll"
+          )
+          $missingDlls = $requiredDlls | Where-Object {
+            -not (Test-Path -LiteralPath "$Env:NOMACS_DEPENDENCIES\bin\$_" -PathType Leaf)
+          }
+          if ($missingDlls) {
+            throw "Missing staged runtime DLLs: $($missingDlls -join ', ')"
+          }
 
       # CMake's legacy file(COPY) calls error on this runner when their
       # destination files do not already exist. Stage the exact deployment

@@ -164,16 +164,21 @@ jobs:
             throw "vcpkg release runtime directory was not found: $vcpkgBin"
           }
           $availableDlls = Get-ChildItem -LiteralPath $vcpkgBin -File -Filter "*.dll"
+          # Current vcpkg calls the zlib runtime zlib.dll; the legacy nomacs
+          # deployment script expects the historical zlib1.dll filename.
+          $sourceNames = @{ "zlib1.dll" = @("zlib1.dll", "zlib.dll") }
           foreach ($dll in $requiredDlls) {
             $source = if ($dll -like "opencv_*.dll") {
               Get-ChildItem "$Env:GITHUB_WORKSPACE\opencv\install\x64\vc18\bin" -File -Filter $dll | Select-Object -First 1
             } else {
-              $availableDlls | Where-Object Name -ieq $dll | Select-Object -First 1
+              $names = $sourceNames[$dll]
+              if (-not $names) { $names = @($dll) }
+              $availableDlls | Where-Object { $names -contains $_.Name } | Select-Object -First 1
             }
             if (-not $source) {
               throw "No release runtime DLL found for $dll"
             }
-            Copy-Item -LiteralPath $source.FullName -Destination $bin -Force
+            Copy-Item -LiteralPath $source.FullName -Destination (Join-Path $bin $dll) -Force
           }
           "NOMACS_DEPENDENCIES=$deps" >> $Env:GITHUB_ENV
 

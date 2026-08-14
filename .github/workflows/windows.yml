@@ -99,6 +99,18 @@ jobs:
           vcpkg install --triplet $Env:VCPKG_TRIPLET --x-install-root $installRoot @dependencies
           "VCPKG_INSTALLED_DIR=$installRoot" >> $Env:GITHUB_ENV
 
+      - name: Inspect vcpkg release runtime
+        run: |
+          $vcpkgBin = "$Env:GITHUB_WORKSPACE\vcpkg-installed\$Env:VCPKG_TRIPLET\bin"
+          if (-not (Test-Path -LiteralPath $vcpkgBin -PathType Container)) {
+            throw "vcpkg release runtime directory was not found: $vcpkgBin"
+          }
+          $runtimeDlls = Get-ChildItem -LiteralPath $vcpkgBin -File -Filter "*.dll"
+          Write-Host "vcpkg release DLLs: $($runtimeDlls.Name -join ', ')"
+          if (-not ($runtimeDlls.Name -match '^zlib(1)?\.dll$')) {
+            throw "vcpkg zlib runtime is absent; installed DLLs are listed above."
+          }
+
       - name: Save vcpkg binary cache
         if: ${{ always() && steps.vcpkg-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4

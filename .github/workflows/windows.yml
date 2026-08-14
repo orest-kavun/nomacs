@@ -104,12 +104,20 @@ jobs:
           path: ${{ runner.temp }}\vcpkg-binary-cache
           key: vcpkg-binaries-${{ runner.os }}-${{ steps.vcpkg-cache-key.outputs.key }}
 
+      - name: Set NOMACS_DEPENDENCIES env var
+        run: |
+          # vcpkg.exe is on PATH from C:\vcpkg, but the MSVC environment sets
+          # VCPKG_ROOT to the installed prefix that contains these DLLs.
+          $deps = Join-Path $Env:VCPKG_ROOT "installed\$Env:VCPKG_TRIPLET"
+          if (-not (Test-Path -LiteralPath "$deps\bin\zlib1.dll" -PathType Leaf)) {
+            throw "vcpkg runtime prefix does not contain zlib1.dll: $deps"
+          }
+          Write-Host "Setting NOMACS_DEPENDENCIES='$deps'"
+          "NOMACS_DEPENDENCIES=$deps" >> $Env:GITHUB_ENV
+
       - name: Verify Windows runtime dependencies
         run: |
-          $vcpkgExe = (Get-Command vcpkg -CommandType Application).Source
-          $vcpkgRoot = Split-Path -Parent $vcpkgExe
-          $vcpkgPrefix = Join-Path $vcpkgRoot "installed\$Env:VCPKG_TRIPLET"
-          Write-Host "vcpkg executable: $vcpkgExe"
+          $vcpkgPrefix = $Env:NOMACS_DEPENDENCIES
           Write-Host "vcpkg prefix: $vcpkgPrefix"
           cmake --version
           & "$Env:QT_ROOT_DIR\bin\qmake.exe" -v
@@ -135,14 +143,6 @@ jobs:
           if ($missingDlls) {
             throw "The deployment script requires missing vcpkg DLLs: $($missingDlls -join ', ')"
           }
-
-      - name: Set NOMACS_DEPENDENCIES env var
-        run: |
-          # Use the default vcpkg installation path on the GitHub runner
-          $deps = "C:\vcpkg\installed\x64-windows"
-          Write-Host "Setting NOMACS_DEPENDENCIES='$deps'"
-          echo "NOMACS_DEPENDENCIES=$deps" >> $Env:GITHUB_ENV
-        shell: pwsh
 
       - name: Fetch OpenCV source
         run: |

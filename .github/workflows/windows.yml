@@ -17,7 +17,7 @@ jobs:
         exiv2:x64-windows libraw:x64-windows vulkan-headers:x64-windows
         pkgconf:x64-windows tiff:x64-windows zlib:x64-windows brotli:x64-windows
         expat:x64-windows openexr:x64-windows libwebp:x64-windows libheif:x64-windows
-        dav1d:x64-windows libjxl:x64-windows karchive:x64-windows opencv:x64-windows
+        dav1d:x64-windows libjxl:x64-windows karchive:x64-windows
 
     defaults:
       run:
@@ -144,6 +144,41 @@ jobs:
           echo "NOMACS_DEPENDENCIES=$deps" >> $Env:GITHUB_ENV
         shell: pwsh
 
+      - name: Fetch OpenCV source
+        run: |
+          Write-Host "Cloning OpenCV..."
+          git clone --depth 1 -b 4.13.0 https://github.com/opencv/opencv.git opencv
+
+      - name: Build & Install OpenCV (with Ninja)
+        run: |
+          cmake `
+            -G Ninja `
+            "-DCMAKE_BUILD_TYPE=Release" `
+            "-DCMAKE_INSTALL_PREFIX=opencv\install" `
+            -S opencv `
+            -B opencv\build `
+            "-DBUILD_LIST=core,imgproc" `
+            "-DBUILD_opencv_apps=OFF" `
+            "-DBUILD_SHARED_LIBS=ON" `
+            "-DBUILD_TESTS=OFF" `
+            "-DBUILD_PERF_TESTS=OFF" `
+            "-DBUILD_EXAMPLES=OFF" `
+            "-DWITH_JPEG=OFF" `
+            "-DWITH_PNG=OFF" `
+            "-DWITH_WEBP=OFF" `
+            "-DWITH_OPENEXR=OFF" `
+            "-DWITH_TIFF=ON" `
+            "-DWITH_FFMPEG=OFF" `
+            "-DWITH_GSTREAMER=OFF" `
+            "-DWITH_OPENCL=OFF" `
+            "-DWITH_IPP=OFF" `
+            "-DWITH_PROTOBUF=OFF" `
+            "-DWITH_QT=OFF" `
+            "-DWITH_OPENGL=OFF"
+
+          cmake --build opencv\build --parallel
+          cmake --install opencv\build
+
       - name: Configure nomacs
         run: |
           cmake `
@@ -151,6 +186,7 @@ jobs:
              -B build `
              -G Ninja `
              "-DCMAKE_BUILD_TYPE=Release" `
+             "-DOpenCV_DIR=$Env:GITHUB_WORKSPACE\opencv\install" `
              "-DQt6_DIR=$Env:QT_ROOT_DIR\lib\cmake\Qt6" `
              "-DQT_QMAKE_EXECUTABLE=$Env:QT_ROOT_DIR\bin\qmake.exe" `
              "-DVCPKG_PREFER_SYSTEM_LIBS=ON" `

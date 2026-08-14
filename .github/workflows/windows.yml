@@ -65,7 +65,7 @@ jobs:
           host: "windows"
           target: "desktop"
           arch: "win64_msvc2019_64"
-          modules: qt5compat
+          modules: qt5compat qttools qtsvg
           cache: true
 
       - name: Setup and install vcpkg dependencies
@@ -133,8 +133,8 @@ jobs:
              -B build `
              -G Ninja `
              "-DCMAKE_BUILD_TYPE=Release" `
-             "-DCMAKE_PREFIX_PATH=opencv\\install;$Env:Qt6_ROOT\\..\\" `
-             "-DQt6_DIR=$Env:Qt6_ROOT\\lib\\cmake\\Qt6" `
+             "-DOpenCV_DIR=$Env:GITHUB_WORKSPACE\opencv\install" `
+             "-DQt6_DIR=$Env:QT_ROOT_DIR\lib\cmake\Qt6" `
              "-DVCPKG_PREFER_SYSTEM_LIBS=ON" `
              "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
 

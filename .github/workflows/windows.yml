@@ -95,8 +95,9 @@ jobs:
           if ($patchedFiles -eq 0) {
             throw "Expected to repair at least one Qt host-info package configuration file."
           }
+          $unrepairedPattern = '_qt_internal_find_host_info_package\(\$\{'
           $unrepairedFiles = Get-ChildItem "$Env:QT_ROOT_DIR\lib\cmake" -Recurse -Filter "*Dependencies.cmake" |
-            Where-Object { (Get-Content -LiteralPath $_.FullName -Raw) -match $pattern }
+            Where-Object { (Get-Content -LiteralPath $_.FullName -Raw) -match $unrepairedPattern }
           if ($unrepairedFiles) {
             throw "Qt host-info package repair did not update: $($unrepairedFiles.FullName -join ', ')"
           }

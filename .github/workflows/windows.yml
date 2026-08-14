@@ -90,6 +90,20 @@ jobs:
           $content = $content.Replace($invalidCall, '# Host-info package is not required for this native build.')
           Set-Content -LiteralPath $config -Value $content -NoNewline -Encoding utf8
 
+      # qmodernwindowsstyle.dll is no longer distributed in Qt 6's Windows
+      # packages. Windows and Fusion widget styles are built into QtGui, so
+      # the legacy unconditional deployment copy is obsolete.
+      - name: Disable obsolete Qt style deployment
+        run: |
+          $script = "$Env:GITHUB_WORKSPACE\ImageLounge\cmake\WinBuildTarget-qt6.cmake"
+          $obsoleteCopy = 'file(COPY ${QT_QMAKE_PATH}/../plugins/styles/qmodernwindowsstyle.dll DESTINATION ${CMAKE_BINARY_DIR}/Release/)'
+          $content = Get-Content -LiteralPath $script -Raw
+          if (-not $content.Contains($obsoleteCopy)) {
+            throw "Expected obsolete Qt style deployment call was not found in $script."
+          }
+          $content = $content.Replace($obsoleteCopy, '# qmodernwindowsstyle.dll is not shipped by Qt 6 for Windows.')
+          Set-Content -LiteralPath $script -Value $content -NoNewline -Encoding utf8
+
       - name: Setup and install vcpkg dependencies
         env:
           VCPKG_BINARY_SOURCES: clear;files,${{ runner.temp }}\vcpkg-binary-cache,readwrite

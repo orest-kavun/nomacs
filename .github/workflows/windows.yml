@@ -155,10 +155,15 @@ jobs:
             "openjp2.dll", "avif.dll", "dav1d.dll", "jxl.dll",
             "jxl_threads.dll", "jxl_cms.dll", "KF6Archive.dll"
           )
-          $packageRoots = @("C:\vcpkg\packages", "$Env:VCPKG_ROOT\packages") |
-            Where-Object { Test-Path -LiteralPath $_ } | Select-Object -Unique
-          $availableDlls = Get-ChildItem -Path $packageRoots -Recurse -File -Filter "*.dll" |
-            Where-Object { $_.FullName -notmatch '\\debug\\' }
+          # The command above invokes C:\vcpkg\vcpkg.exe, which installs the
+          # release runtime in its installed tree. VCPKG_ROOT still points at
+          # Visual Studio's bundled vcpkg after MSVC setup, so do not use it
+          # to discover the artifacts of this invocation.
+          $vcpkgBin = "C:\vcpkg\installed\$Env:VCPKG_TRIPLET\bin"
+          if (-not (Test-Path -LiteralPath $vcpkgBin -PathType Container)) {
+            throw "vcpkg release runtime directory was not found: $vcpkgBin"
+          }
+          $availableDlls = Get-ChildItem -LiteralPath $vcpkgBin -File -Filter "*.dll"
           foreach ($dll in $requiredDlls) {
             $source = if ($dll -like "opencv_*.dll") {
               Get-ChildItem "$Env:GITHUB_WORKSPACE\opencv\install\x64\vc18\bin" -File -Filter $dll | Select-Object -First 1

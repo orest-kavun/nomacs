@@ -179,6 +179,34 @@ jobs:
           cmake --build opencv\build --parallel
           cmake --install opencv\build
 
+      # CMake's legacy file(COPY) calls error on this runner when their
+      # destination files do not already exist. Stage the exact deployment
+      # layout first; identical files are then skipped by those calls.
+      - name: Stage Windows runtime dependencies
+        run: |
+          $release = "$Env:GITHUB_WORKSPACE\build\Release"
+          New-Item -ItemType Directory -Force $release | Out-Null
+
+          $requiredDlls = @(
+            "zlib1.dll", "jpeg62.dll", "brotlicommon.dll", "brotlidec.dll",
+            "brotlienc.dll", "exiv2.dll", "libexpat.dll", "lcms2.dll",
+            "raw.dll", "opencv_core4130.dll", "opencv_imgproc4130.dll",
+            "libsharpyuv.dll", "tiff.dll", "libwebp.dll", "OpenEXR-3_4.dll",
+            "IlmThread-3_4.dll", "OpenEXRCore-3_4.dll", "Iex-3_4.dll",
+            "Imath-3_2.dll", "heif.dll", "libde265.dll", "openh264-7.dll",
+            "openjp2.dll", "avif.dll", "dav1d.dll", "jxl.dll",
+            "jxl_threads.dll", "jxl_cms.dll", "KF6Archive.dll"
+          )
+          foreach ($dll in $requiredDlls) {
+            Copy-Item -LiteralPath "$Env:NOMACS_DEPENDENCIES\bin\$dll" -Destination $release -Force
+          }
+
+          Copy-Item -Path "$Env:GITHUB_WORKSPACE\opencv\install\x64\vc18\bin\*.dll" -Destination $release -Force
+          Copy-Item -Path "$Env:QT_ROOT_DIR\bin\Qt6*.dll" -Destination $release -Force
+          foreach ($pluginDirectory in "imageformats", "iconengines", "platforms", "styles", "tls") {
+            Copy-Item -LiteralPath "$Env:QT_ROOT_DIR\plugins\$pluginDirectory" -Destination $release -Recurse -Force
+          }
+
       - name: Configure nomacs
         run: |
           cmake `

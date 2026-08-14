@@ -75,6 +75,12 @@ jobs:
           modules: qt5compat
           cache: true
 
+      - name: Inspect Qt CMake host-info configuration
+        run: |
+          Get-ChildItem "$Env:QT_ROOT_DIR\lib\cmake" -Recurse -Filter "*.cmake" |
+            Select-String -Pattern '_qt_internal_find_host_info_package' |
+            ForEach-Object { "{0}:{1}: {2}" -f $_.Path, $_.LineNumber, $_.Line.Trim() }
+
       - name: Setup and install vcpkg dependencies
         env:
           VCPKG_BINARY_SOURCES: clear;files,${{ runner.temp }}\vcpkg-binary-cache,readwrite
